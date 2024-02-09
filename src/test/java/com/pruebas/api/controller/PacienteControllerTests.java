@@ -195,4 +195,30 @@ public class PacienteControllerTests {
                 .andExpect(result -> assertEquals(
                         "Los datos del paciente no pueden ser nulos", result.getResolvedException().getMessage()));
     }
+
+    @Test
+    @DisplayName("Eliminando un paciente")
+    void testEliminarPacienteConExito() throws Exception {
+        Mockito.when(pacienteService.getPacienteById(PACIENTE_002.getPacienteId())).thenReturn(Optional.of(PACIENTE_002));
+
+        mockMvc.perform(MockMvcRequestBuilders
+                .delete("/api/pacientes/2")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+    }
+
+    @Test
+    @DisplayName("Eliminando un paciente que no existe")
+    void testEliminarPacienteNoEncontrado() throws Exception {
+        Mockito.when(pacienteService.getPacienteById(10L)).thenReturn(Optional.of(PACIENTE_002));
+
+        mockMvc.perform(MockMvcRequestBuilders
+                .delete("/api/pacientes/2")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(result ->
+                        assertTrue(result.getResolvedException() instanceof NotFoundException));
+
+    }
 }
