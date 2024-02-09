@@ -6,8 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pruebas.api.entity.Paciente;
+import com.pruebas.api.exceptions.InvalidRequestException;
+import com.pruebas.api.exceptions.NotFoundException;
 import com.pruebas.api.service.PacienteService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.ArrayList;
@@ -82,5 +86,113 @@ public class PacienteControllerTests {
                 );
 
 
+    }
+
+    @Test
+    @DisplayName("Guardando un paciente")
+    void testGuardarPaciente() throws Exception {
+        // paciente que voy a guardar
+        Paciente paciente = Paciente.builder()
+                .pacienteId(4L)
+                .nombre("Pedro Lopez")
+                .edad(56)
+                .correo("pedro@gmail.com")
+                .build();
+        // Cuando yo llame al metodo createPaciente...
+        Mockito.when(pacienteService.createPaciente(paciente)).thenReturn(paciente);
+
+        //genero la peticion
+        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.post("/api/pacientes")
+                .contentType(MediaType.APPLICATION_JSON) //indico que esta request me va a devolver un json
+                .accept(MediaType.APPLICATION_JSON) // indico que esta request acepta json
+                .content(objectMapper.writeValueAsString(paciente)); // transformo el paciente q voy a guardar en json
+
+        mockMvc.perform(mockRequest) // cuando ejecuto la peticion
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$",notNullValue())) // notiene que ser nulo
+                .andExpect(jsonPath("$.nombre",is("Pedro Lopez")));
+
+
+    }
+
+    @Test
+    @DisplayName("Actualizando un paciente")
+    void testActualizarPacienteConExito() throws Exception {
+        // paciente que voy a actualizar
+        Paciente pacienteUpdate = Paciente.builder()
+                .pacienteId(1L)
+                .nombre("Pedro Argento")
+                .edad(48)
+                .correo("pepe@gmail.com")
+                .build();
+        // Cuando yo llame primero al metodo getPacienteid entonces...
+        Mockito.when(pacienteService.getPacienteById(PACIENTE_001.getPacienteId())).thenReturn(Optional.of(PACIENTE_001));
+        // y Cuando llame al updateService entonces ....
+        Mockito.when(pacienteService.updatePaciente(pacienteUpdate)).thenReturn(pacienteUpdate);
+
+        //genero la peticion
+        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.put("/api/pacientes")
+                .contentType(MediaType.APPLICATION_JSON) //indico que esta request me va a devolver un json
+                .accept(MediaType.APPLICATION_JSON) // indico que esta request acepta json
+                .content(objectMapper.writeValueAsString(pacienteUpdate)); // transformo el paciente q voy a guardar en json
+
+        mockMvc.perform(mockRequest) // cuando ejecuto la peticion
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$",notNullValue())) // notiene que ser nulo
+                .andExpect(jsonPath("$.nombre",is("Pedro Argento")));
+
+
+    }
+
+    @Test
+    @DisplayName("Actualizando un paciente que no existe")
+    void testActualizarPacienteNoEncontrado() throws Exception {
+        // paciente que voy a actualizar
+        Paciente pacienteUpdate = Paciente.builder()
+                .pacienteId(8L) // Id que no existe
+                .nombre("Pedro Argento")
+                .edad(48)
+                .correo("pepe@gmail.com")
+                .build();
+
+
+        //genero la peticion
+        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.put("/api/pacientes")
+                .contentType(MediaType.APPLICATION_JSON) //indico que esta request me va a devolver un json
+                .accept(MediaType.APPLICATION_JSON) // indico que esta request acepta json
+                .content(objectMapper.writeValueAsString(pacienteUpdate)); // transformo el paciente q voy a guardar en json
+
+        mockMvc.perform(mockRequest) // cuando ejecuto la peticion
+                .andExpect(status().isNotFound())
+                .andExpect(result -> assertTrue( //Si el error es instance de NotFoundException entonces devuelve true
+                        result.getResolvedException() instanceof NotFoundException
+                ))
+                .andExpect(result -> assertEquals(
+                        "Paciente con el ID: " + pacienteUpdate.getPacienteId() + " No Existe!", result.getResolvedException().getMessage()));
+    }
+    @Test
+    @DisplayName("Actualizando un paciente que no existe")
+    void testActualizarPacienteConIdNulo() throws Exception {
+        // paciente que voy a actualizar
+        Paciente pacienteUpdate = Paciente.builder()
+                .nombre("Pedro Argento")
+                .edad(48)
+                .correo("pepe@gmail.com")
+                .build();
+
+
+        //genero la peticion
+        MockHttpServletRequestBuilder mockRequest = MockMvcRequestBuilders.put("/api/pacientes")
+                .contentType(MediaType.APPLICATION_JSON) //indico que esta request me va a devolver un json
+                .accept(MediaType.APPLICATION_JSON) // indico que esta request acepta json
+                .content(objectMapper.writeValueAsString(pacienteUpdate)); // transformo el paciente q voy a guardar en json
+
+        mockMvc.perform(mockRequest) // cuando ejecuto la peticion
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> assertTrue( //Si el error es instance de NotFoundException entonces devuelve true
+                        result.getResolvedException() instanceof InvalidRequestException
+                ))
+                .andExpect(result -> assertEquals(
+                        "Los datos del paciente no pueden ser nulos", result.getResolvedException().getMessage()));
     }
 }
